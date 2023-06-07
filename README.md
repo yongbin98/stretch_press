@@ -1,23 +1,13 @@
-# StretchOrganizer
+## A Convolutional Neural Network for Classification of Stimuli based on Stretchable Mechanical Sensor
+This repository contains the implementation of a Convolutional Neural Network (CNN) architecture for the classification of stimuli based on stretchable mechanical sensors. The CNN is designed to classify strain and pressure measurements obtained from these sensors.
 
-## Overview
+# Abstract
+While various commercialized wearable devices are being released for measuring physiological signals, the issue of signal distortion caused by motion artifacts (MA) has not been fully resolved yet. Recently, stretchable sensors have been widely adopted for measuring physiological signals by attaching them to the skin. In this study, we present a convolutional neural network (CNN) architecture to classify the strain and pressure measured by stretchable sensors. We evaluate the classification performance using cross-validation followed by a testing dataset. The results demonstrate that our proposed CNN architecture provides high-accuracy metrics, enabling accurate identification of stimuli/deformation/distortion sources applied to stretchable sensors, such as strain and pressure.
 
-`StretchOrganizer` is a MATLAB tool developed for reorganizing data used in the research on the discrimination of mechanical stimuli imposed on stretchable multimodal mechanical sensor via deep learning.
-This tool enables users to process large datasets and prepare them for input into deep learning models.
+# Implementation
+The implementation of the proposed model is based on the TensorFlow package (ver. 2.9.1), which provides a Python API for tensor manipulation. The official front-end of TensorFlow, Keras (ver. 2.9.0), is used for building and training the CNN. The models are trained with the Adam optimizer and the categorical cross-entropy cost function. A learning rate of 0.001 and a batch size of 32 are used. The training is performed on a GeForce RTX 3090 graphics processing unit (NVIDIA).
 
-## Features
+# Conclusion
+In this study, we presented a stretchable AgNW sensor and proposed a CNN architecture to classify different levels of stretching and pressing from a current change signal. The CNN architecture was evaluated using cross-validation and an independent testing dataset. The testing data exhibited high accuracy metrics, including sensitivity, specificity, accuracy, F1-score, and AUROC. We believe that our CNN architecture can accurately identify the stimuli/deformation/distortion sources applied to stretchable sensors, such as strain and pressure. This capability can help researchers plan strategies to handle motion artifacts and improve the reliability of physiological signal measurements. In particular, our model can be beneficial for measuring signals like electrocardiograms or photoplethysmograms, where stretchable sensors are widely used on the skin to mitigate motion artifacts.
 
-- Automatically preprocesses and formats large datasets
-- Provides easy-to-use functions for data organization and feature extraction
-
-## Prerequisites
-
-- MATLAB R2020a or later
-
-## Acknowledgments
-
-This work was supported by National Research Foundation of Korea (NRF) grant (Number 2020M3H4A3081895 and 2020R1A2C1014829) funded by the Korean government (MSIP). <br>
-Yongbin Lee and Jinseok Lee are with the Department of Biomedical Engineering, Kyung Hee University, Yongin, Republic of Korea <br>
-Hyunsik Shin and JongWoong Kim are with the School of Advanced Materials Engineering, Jeonbuk National University, Jeonju, Republic of Korea <br>
-* Jong-Woong Kim and Jinseok Lee are corresponding authors.<br>
-† Co-first authors
+Note: The implementation details mentioned in this document are based on specific versions of the TensorFlow and Keras packages. Please refer to the respective package documentation for the most up-to-date information.
