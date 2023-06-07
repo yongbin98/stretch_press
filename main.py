@@ -257,7 +257,7 @@ def K_fold(x_train, y_train, x_test, y_test):
                        
         optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
         model.compile(optimizer=optimizer,loss='sparse_categorical_crossentropy',metrics=['accuracy'])
-        model.fit([Input1, Input2, Input3], aug_ytrain, batch_size=64, validation_data = ([Val_Input1, Val_Input2, Val_Input3],label_valid), epochs=300, callbacks=callback_list)
+        model.fit([Input1, Input2, Input3], aug_ytrain, batch_size=32, validation_data = ([Val_Input1, Val_Input2, Val_Input3],label_valid), epochs=300, callbacks=callback_list)
         model.load_weights('./Stretch_press/model/model_best_fold'+str(num_folds)+'.h5')
         vPred = model.predict([Val_Input1, Val_Input2, Val_Input3])        
         loss, acc = model.evaluate([Val_Input1, Val_Input2, Val_Input3], label_valid)
