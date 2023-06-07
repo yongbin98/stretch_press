@@ -12,6 +12,8 @@ import sklearn.preprocessing
 import tensorflow as tf
 
 resample_num = 150
+category = [0,1,2,3,4,5,6,7]
+# category = [0,1,2,3,4,5,6,7,8,9,10,11]
 
 def loadMatlabData(filePath):
     fileName = filePath + 'stretch_press_data_'+str(resample_num)+'.mat'
@@ -55,7 +57,7 @@ def dnn_model():
     x = tf.keras.layers.Dense(256, activation='relu', name='FC0')(x)
     x = tf.keras.layers.Dropout(0.1)(x)
     x = tf.keras.layers.Dense(64, activation='relu', name='FC1')(x)
-    output = tf.keras.layers.Dense(8, activation='softmax', name='Output')(x)
+    output = tf.keras.layers.Dense(len(category), activation='softmax', name='Output')(x)
     
     model= tf.keras.models.Model(inputs=[input1, input2, input3], outputs=output)
     # model = tf.keras.applications.resnet.ResNet50(weights=None, input_tensor=tf.keras.layers.Input(shape=(90, 1, 1)), classes=8)
@@ -63,6 +65,7 @@ def dnn_model():
         
     return model
 def same_model(input):
+    
     x = tf.keras.layers.Conv2D(filters=16, kernel_size=(7,1), strides = (1), activation = 'relu', padding='valid', name='CV1')(input)
     x = tf.keras.layers.AveragePooling2D(pool_size = (3,1), strides = (2,1), name='AP1')(x)
     x = tf.keras.layers.Dropout(0.1)(x)
@@ -75,6 +78,7 @@ def same_model(input):
     x = tf.keras.layers.Conv2D(filters=128, kernel_size=(7,1), strides = (1), activation = 'relu', padding='valid', name='CV4')(x)
     x = tf.keras.layers.AveragePooling2D(pool_size = (3,1), strides = (2,1), name='AP4')(x)
     x = tf.keras.layers.Dropout(0.1)(x)
+    
     x = tf.keras.layers.Flatten(name='Flatten')(x)
     return x
 
@@ -188,6 +192,7 @@ def K_fold(x_train, y_train, x_test, y_test):
     str_kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=44)
     y_train = y_train-1
     y_test = y_test-1
+    bal_accs = []
     accs = []
     recalls = []
     specs = []
@@ -203,7 +208,9 @@ def K_fold(x_train, y_train, x_test, y_test):
         label_train, label_valid = y_train[train_idx], y_train[valid_idx]
                 
         # Data augmentation
-        aug_xtrain, aug_ytrain = data_aug(data_train,label_train, [0, 1, 2, 3, 4, 5, 6, 7])
+        aug_xtrain, aug_ytrain = data_aug(data_train,label_train, category)
+        # aug_xtrain = data_train
+        # aug_ytrain = label_train
         
         # Data shuffle
         tmp = [[x,y] for x,y in zip(aug_xtrain,aug_ytrain)]
@@ -213,7 +220,7 @@ def K_fold(x_train, y_train, x_test, y_test):
         aug_xtrain = np.array(aug_xtrain)
         aug_ytrain = np.array(aug_ytrain)
         
-        # Data reshape
+        # Data Reshape
         aug_xtrain, aug_ytrain, data_valid, label_valid, x_test1, y_test1, train_time, valid_time, test_time, train_amplitude, valid_amplitude, test_amplitude = reshape_input(aug_xtrain, aug_ytrain, data_valid, label_valid, x_test, y_test)
         
         # Data save
@@ -248,8 +255,9 @@ def K_fold(x_train, y_train, x_test, y_test):
         Val_Input2 = valid_time
         Val_Input3 = valid_amplitude
                        
-        model.compile(optimizer='adam',loss='sparse_categorical_crossentropy',metrics=['accuracy'])
-        model.fit([Input1, Input2, Input3], aug_ytrain, batch_size=32, validation_data = ([Val_Input1, Val_Input2, Val_Input3],label_valid), epochs=300, callbacks=callback_list)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+        model.compile(optimizer=optimizer,loss='sparse_categorical_crossentropy',metrics=['accuracy'])
+        model.fit([Input1, Input2, Input3], aug_ytrain, batch_size=64, validation_data = ([Val_Input1, Val_Input2, Val_Input3],label_valid), epochs=300, callbacks=callback_list)
         model.load_weights('./Stretch_press/model/model_best_fold'+str(num_folds)+'.h5')
         vPred = model.predict([Val_Input1, Val_Input2, Val_Input3])        
         loss, acc = model.evaluate([Val_Input1, Val_Input2, Val_Input3], label_valid)
@@ -257,9 +265,9 @@ def K_fold(x_train, y_train, x_test, y_test):
         # result = pd.DataFrame({'Pred': Pred, 'label':y_test1.flatten()})
         # result.to_csv("./Stretch_press/Result/" + 'Result'+str(num_folds)+'.csv')
         
-        Pred = decode_one_hot(vPred, 8)
+        Pred = decode_one_hot(vPred, len(category))
         # Pred = one_hot(Pred)
-        accuracy, precision, recall, spec, roc_auc, bal_acc, f1 = get_clf_eval(label_valid.flatten(), Pred.flatten(), vPred, [0, 1, 2, 3, 4, 5, 6, 7])
+        accuracy, precision, recall, spec, roc_auc, bal_acc, f1 = get_clf_eval(label_valid.flatten(), Pred.flatten(), vPred, category)
         result = pd.DataFrame({'accuracy': accuracy, 'precision':precision, 'recall':recall, 'spec':spec, 'roc_auc':roc_auc, 'bal_acc':bal_acc, 'f1':f1})
         result.to_csv("./Stretch_press/Result/" + 'score_fold'+str(num_folds)+'.csv')
         
@@ -268,8 +276,10 @@ def K_fold(x_train, y_train, x_test, y_test):
         specs.append(spec)
         rocs.append(roc_auc)
         f1s.append(f1)
+        bal_accs.append(bal_acc)
     
     print(f'acc : {accs}')
+    print(f'bal_acc : {bal_accs}')
     print(f'recalls : {recalls}')
     print(f'specs : {specs}')
     print(f'rocs : {rocs}')
@@ -277,6 +287,8 @@ def K_fold(x_train, y_train, x_test, y_test):
     
     mean_acc = round(np.mean(accs),4)
     std_acc = round(np.std(accs),4)
+    mean_balacc = round(np.mean(bal_accs),4)
+    std_balacc = round(np.std(bal_accs),4)
     mean_recall = round(np.mean(recalls),4)
     std_recall = round(np.std(recalls),4)
     mean_spec = round(np.mean(specs),4)
@@ -289,6 +301,7 @@ def K_fold(x_train, y_train, x_test, y_test):
     print(f'recalls : {mean_recall} std : {std_recall}')
     print(f'specs : {mean_spec} std : {std_spec}')
     print(f'accs : {mean_acc} std : {std_acc}')
+    print(f'bal_accs : {mean_balacc} std : {std_balacc}')
     print(f'f1s : {mean_f1} std : {std_f1}')   
     print(f'rocs : {mean_roc} std : {std_roc}')
     
@@ -356,41 +369,41 @@ def get_clf_eval(y_test, pred=None, pred_proba=None, classes=[0, 1]):
     bal_acc = ((recall + spec) / 2)
     
     for i in classes:
-        accuracy[i] = (TP[i] + TN[i])/(TP[i]+FN[i]+FP[i]+TN[i])
+        accuracy = (TP[i] + TN[i])/(TP[i]+FN[i]+FP[i]+TN[i])
     
     ### roc
-    for i in range(len(classes)):
-        ax_bottom = plt.subplot(2, 4, i+1)
-        tpr_list = [0]
-        fpr_list = [0]
-        y_proba = pred_proba[:,i]
-        c = classes[i]
-        y_real = [1 if y == c else 0 for y in y_test]
-        for j in range(len(y_proba)):
-            threshold = y_proba[j]
-            y_pred = y_proba >= threshold
-            tpr, fpr = calculate_tpr_fpr(y_real, y_pred)
-            tpr_list.append(tpr)
-            fpr_list.append(fpr)
-        plot_roc_curve(tpr_list,fpr_list,scatter=False,ax=ax_bottom)        
-        if(i==0):
-            ax_bottom.set_title("ROC Curve OvR Stretching 10%")
-        if(i==1):
-            ax_bottom.set_title("ROC Curve OvR Stretching 20%")
-        if(i==2):
-            ax_bottom.set_title("ROC Curve OvR Stretching 30%")
-        if(i==3):
-            ax_bottom.set_title("ROC Curve OvR Pressing 0.5N")
-        if(i==4):
-            ax_bottom.set_title("ROC Curve OvR Pressing 1N")
-        if(i==5):
-            ax_bottom.set_title("ROC Curve OvR Pressing 1.5N")
-        if(i==6):
-            ax_bottom.set_title("ROC Curve OvR Pressing 2N")
-        if(i==7):
-            ax_bottom.set_title("ROC Curve OvR Pressing 2.5N")
+    # for i in range(len(classes)):
+    #     ax_bottom = plt.subplot(2, 4, i+1)
+    #     tpr_list = [0]
+    #     fpr_list = [0]
+    #     y_proba = pred_proba[:,i]
+    #     c = classes[i]
+    #     y_real = [1 if y == c else 0 for y in y_test]
+    #     for j in range(len(y_proba)):
+    #         threshold = y_proba[j]
+    #         y_pred = y_proba >= threshold
+    #         tpr, fpr = calculate_tpr_fpr(y_real, y_pred)
+    #         tpr_list.append(tpr)
+    #         fpr_list.append(fpr)
+    #     plot_roc_curve(tpr_list,fpr_list,scatter=False,ax=ax_bottom)        
+    #     if(i==0):
+    #         ax_bottom.set_title("ROC Curve OvR Stretching 10%")
+    #     if(i==1):
+    #         ax_bottom.set_title("ROC Curve OvR Stretching 20%")
+    #     if(i==2):
+    #         ax_bottom.set_title("ROC Curve OvR Stretching 30%")
+    #     if(i==3):
+    #         ax_bottom.set_title("ROC Curve OvR Pressing 0.5N")
+    #     if(i==4):
+    #         ax_bottom.set_title("ROC Curve OvR Pressing 1N")
+    #     if(i==5):
+    #         ax_bottom.set_title("ROC Curve OvR Pressing 1.5N")
+    #     if(i==6):
+    #         ax_bottom.set_title("ROC Curve OvR Pressing 2N")
+    #     if(i==7):
+    #         ax_bottom.set_title("ROC Curve OvR Pressing 2.5N")
         
-    plt.show()
+    # plt.show()
     
     print('오차 행렬')
     print(confusion)
@@ -452,53 +465,54 @@ def plot_roc_curve(tpr, fpr, scatter = True, ax = None):
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate")
     
-x_data, y_data = loadMatlabData("./Stretch_press/data/")
+# x_data, y_data = loadMatlabData("./Stretch_press/data/")
 
-x_train, x_test, y_train, y_test = train_test_split(x_data, y_data,test_size = 0.2, stratify=y_data , shuffle=True, random_state=99)
+# x_train, x_test, y_train, y_test = train_test_split(x_data, y_data,test_size = 0.2, stratify=y_data , shuffle=True, random_state=99)
 
 # ### Kfold
-x_train, y_train, x_test, y_test, test_time, test_amplitude = K_fold(x_train, y_train, x_test, y_test)
+# x_train, y_train, x_test, y_test, test_time, test_amplitude = K_fold(x_train, y_train, x_test, y_test)
 
 # result = pd.DataFrame(x_train.squeeze(),y_train.squeeze())
 # result.to_csv("./Stretch_press/Result/" + 'Result1.csv')
 
-#### Ensemble load weight
-# vPreds = []
+# ### Ensemble load weight
 
-# for i in range(5):
-#     model = dnn_model()
-#     model.load_weights('./Stretch_press/model/model_best_fold'+str(i+1)+'.h5')
-#     aug_xtrain, aug_ytrain, data_valid, label_valid, x_test1, y_test1, train_time, valid_time, test_time, train_amplitude, valid_amplitude, test_amplitude = loadMatlabData2('./Stretch_press/model/',i+1)
+vPreds = []
+
+for i in range(5):
+    model = dnn_model()
+    model.load_weights('./Stretch_press/model/model_best_fold'+str(i+1)+'.h5')
+    aug_xtrain, aug_ytrain, data_valid, label_valid, x_test1, y_test1, train_time, valid_time, test_time, train_amplitude, valid_amplitude, test_amplitude = loadMatlabData2('./Stretch_press/model/',i+1)
     
-#     vPred = model.predict([x_test1[:, 5:resample_num+5, :], test_time, test_amplitude]).squeeze()
-#     vPreds.append(vPred)
-#     process = psutil.Process(os.getpid())
-#     print("Mem : " ,process.memory_info().rss/1024**2)
+    vPred = model.predict([x_test1[:, 5:resample_num+5, :], test_time, test_amplitude]).squeeze()
+    vPreds.append(vPred)
+    process = psutil.Process(os.getpid())
+    print("Mem : " ,process.memory_info().rss/1024**2)
     
-# vPred = (vPreds[0] + vPreds[1] + vPreds[2] + vPreds[3] + vPreds[4])/5
-# Pred = decode_one_hot(vPred,8)
-# accuracy, precision, recall, spec, roc_auc, bal_acc, f1 = get_clf_eval(y_test1.flatten(), Pred.flatten(), vPred, [0, 1, 2, 3, 4, 5, 6, 7])
-# result = pd.DataFrame({'accuracy': accuracy, 'precision':precision, 'recall':recall, 'spec':spec, 'roc_auc':roc_auc, 'bal_acc':bal_acc, 'f1':f1})
-# result.to_csv("./Stretch_press/Result/" + 'vPred_ensemble.csv')
+vPred = (vPreds[0] + vPreds[1] + vPreds[2] + vPreds[3] + vPreds[4])/5
+Pred = decode_one_hot(vPred,len(category))
+accuracy, precision, recall, spec, roc_auc, bal_acc, f1 = get_clf_eval(y_test1.flatten(), Pred.flatten(), vPred, category)
+result = pd.DataFrame({'accuracy': accuracy, 'precision':precision, 'recall':recall, 'spec':spec, 'roc_auc':roc_auc, 'bal_acc':bal_acc, 'f1':f1})
+result.to_csv("./Stretch_press/Result/" + 'vPred_ensemble.csv')
 
-# mean_acc = round(np.mean(accuracy),4)
-# std_acc = round(np.std(accuracy),4)
-# mean_recall = round(np.mean(recall),4)
-# std_recall = round(np.std(recall),4)
-# mean_spec = round(np.mean(spec),4)
-# std_spec = round(np.std(spec),4)
-# mean_roc = round(np.mean(roc_auc),4)
-# std_roc = round(np.std(roc_auc),4)
-# mean_f1 = round(np.mean(f1),4)
-# std_f1 = round(np.std(f1),4)
+mean_acc = round(np.mean(accuracy),4)
+std_acc = round(np.std(accuracy),4)
+mean_recall = round(np.mean(recall),4)
+std_recall = round(np.std(recall),4)
+mean_spec = round(np.mean(spec),4)
+std_spec = round(np.std(spec),4)
+mean_roc = round(np.mean(roc_auc),4)
+std_roc = round(np.std(roc_auc),4)
+mean_f1 = round(np.mean(f1),4)
+std_f1 = round(np.std(f1),4)
 
-# print(f'recalls : {mean_recall} std : {std_recall}')
-# print(f'specs : {mean_spec} std : {std_spec}')
-# print(f'accs : {mean_acc} std : {std_acc}')
-# print(f'f1s : {mean_f1} std : {std_f1}')   
-# print(f'rocs : {mean_roc} std : {std_roc}')
+print(f'recalls : {mean_recall} std : {std_recall}')
+print(f'specs : {mean_spec} std : {std_spec}')
+print(f'accs : {mean_acc} std : {std_acc}')
+print(f'f1s : {mean_f1} std : {std_f1}')   
+print(f'rocs : {mean_roc} std : {std_roc}')
 
-##### test data
+##### test d/ata single modle
 # accs = []
 # recalls = []
 # specs = []
@@ -509,13 +523,9 @@ x_train, y_train, x_test, y_test, test_time, test_amplitude = K_fold(x_train, y_
 #     model.load_weights('./Stretch_press/model/model_best_fold'+str(i+1)+'.h5')
 #     aug_xtrain, aug_ytrain, data_valid, label_valid, x_test1, y_test1, train_time, valid_time, test_time, train_amplitude, valid_amplitude, test_amplitude = loadMatlabData2('./Stretch_press/model/',i+1)    
     
-#     # vPred = model.predict([data_valid[:, 5:resample_num+5, :], valid_time, valid_amplitude])
-#     # Pred = decode_one_hot(vPred,8)        
-#     # accuracy, precision, recall, spec, roc_auc, bal_acc, f1 = get_clf_eval(label_valid.flatten(), Pred.flatten(), vPred, [0, 1, 2, 3, 4, 5, 6, 7])
-    
 #     vPred = model.predict([x_test1[:, 5:resample_num+5, :], test_time, test_amplitude])
-#     Pred = decode_one_hot(vPred,8)
-#     accuracy, precision, recall, spec, roc_auc, bal_acc, f1 = get_clf_eval(y_test1.flatten(), Pred.flatten(), vPred, [0, 1, 2, 3, 4, 5, 6, 7])
+#     Pred = decode_one_hot(vPred,len(category))
+#     accuracy, precision, recall, spec, roc_auc, bal_acc, f1 = get_clf_eval(y_test1.flatten(), Pred.flatten(), vPred, category)
 #     result = pd.DataFrame({'accuracy': accuracy, 'precision':precision, 'recall':recall, 'spec':spec, 'roc_auc':roc_auc, 'bal_acc':bal_acc, 'f1':f1})
 #     result.to_csv("./Stretch_press/Result/" + 'score_fold'+str(i+1)+'.csv')
     
