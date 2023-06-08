@@ -3,11 +3,11 @@ This repository contains the implementation of a Convolutional Neural Network (C
 
 # Abstract
 While various commercialized wearable devices are being released for measuring physiological signals, the issue of signal distortion caused by motion artifacts (MA) has not been fully resolved yet. Recently, stretchable sensors have been widely adopted for measuring physiological signals by attaching them to the skin. In this study, we present a convolutional neural network (CNN) architecture to classify the strain and pressure measured by stretchable sensors. We evaluate the classification performance using cross-validation followed by a testing dataset. The results demonstrate that our proposed CNN architecture provides high-accuracy metrics, enabling accurate identification of stimuli/deformation/distortion sources applied to stretchable sensors, such as strain and pressure.
+![image](https://github.com/yongbin98/stretch_press/assets/84390702/a7e95841-73c8-4fed-b916-b5c4a5ba5301)
 
 # Implementation
 The implementation of the proposed model is based on the TensorFlow package (ver. 2.9.1), which provides a Python API for tensor manipulation. The official front-end of TensorFlow, Keras (ver. 2.9.0), is used for building and training the CNN. The models are trained with the Adam optimizer and the categorical cross-entropy cost function. A learning rate of 0.001 and a batch size of 32 are used. The training is performed on a GeForce RTX 3090 graphics processing unit (NVIDIA).
 
+![image](https://github.com/yongbin98/stretch_press/assets/84390702/6520c0f8-dab6-425a-ba65-e0ca39f4b91e)
 # Conclusion
 In this study, we presented a stretchable AgNW sensor and proposed a CNN architecture to classify different levels of stretching and pressing from a current change signal. The CNN architecture was evaluated using cross-validation and an independent testing dataset. The testing data exhibited high accuracy metrics, including sensitivity, specificity, accuracy, F1-score, and AUROC. We believe that our CNN architecture can accurately identify the stimuli/deformation/distortion sources applied to stretchable sensors, such as strain and pressure. This capability can help researchers plan strategies to handle motion artifacts and improve the reliability of physiological signal measurements. In particular, our model can be beneficial for measuring signals like electrocardiograms or photoplethysmograms, where stretchable sensors are widely used on the skin to mitigate motion artifacts.
-
-Note: The implementation details mentioned in this document are based on specific versions of the TensorFlow and Keras packages. Please refer to the respective package documentation for the most up-to-date information.
